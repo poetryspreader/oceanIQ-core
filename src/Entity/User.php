@@ -2,89 +2,95 @@
 
 namespace App\Entity;
 
+use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
-/**
- * @ORM\Entity()
- * @ORM\Table(name="users")
- */
-class User
+#[ORM\Entity(repositoryClass: UserRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_UUID', fields: ['uuid'])]
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
-    private int $id;
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
+    private ?int $id = null;
 
-    /**
-     * @ORM\Column(type="string", length=180, unique=true)
-     */
-    private string $email;
+    #[ORM\Column(length: 180)]
+    private ?string $uuid = null;
 
-    /**
-     * @ORM\Column(type="string", length=255)
-     */
-    private string $password;
+    #[ORM\Column]
+    private array $roles = [];
 
-    /**
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    private ?\DateTime $createdAt = null;
+    #[ORM\Column]
+    private ?string $password = null;
 
-    /**
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    private ?\DateTime $updatedAt = null;
+    #[ORM\Column]
+    private ?string $email = null;
 
-    // Геттеры и сеттеры
-
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getEmail(): string
+    public function getUuid(): ?string
     {
-        return $this->email;
+        return $this->uuid;
     }
 
-    public function setEmail(string $email): self
+    public function setUuid(string $uuid): static
     {
-        $this->email = $email;
+        $this->uuid = $uuid;
+
         return $this;
     }
 
-    public function getPassword(): string
+    public function getUserIdentifier(): string
+    {
+        return (string) $this->uuid;
+    }
+
+    public function getRoles(): array
+    {
+        $roles = $this->roles;
+        // guarantee every user at least has ROLE_USER
+        $roles[] = 'ROLE_USER';
+
+        return array_unique($roles);
+    }
+
+    public function setRoles(array $roles): static
+    {
+        $this->roles = $roles;
+
+        return $this;
+    }
+
+    public function getPassword(): ?string
     {
         return $this->password;
     }
 
-    public function setPassword(string $password): self
+    public function setPassword(string $password): static
     {
         $this->password = $password;
+
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function eraseCredentials(): void
     {
-        return $this->createdAt;
+        // If you store any temporary, sensitive data on the user, clear it here
+        // $this->plainPassword = null;
     }
 
-    public function setCreatedAt(?\DateTime $createdAt): self
+    public function getEmail(): ?string
     {
-        $this->createdAt = $createdAt;
-        return $this;
+        return $this->email;
     }
 
-    public function getUpdatedAt(): ?\DateTime
+    public function setEmail(?string $email): void
     {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTime $updatedAt): self
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
+        $this->email = $email;
     }
 }
