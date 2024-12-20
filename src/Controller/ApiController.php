@@ -3,6 +3,7 @@ namespace App\Controller;
 
 // ...
 use App\Entity\User;
+use App\Service\ApiService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -11,17 +12,17 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
-//use Symfony\Component\Validator\Constraints\Uuid;
-//use Symfony\Component\Uid\Uuid; // Импорт правильного класса
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
-
-class RegistrationController extends AbstractController
+class ApiController extends AbstractController
 {
+
     #[Route('/api/register', name: 'api_register', methods: ['POST', 'OPTIONS'])]
     public function register(
         Request $request,
         EntityManagerInterface $entityManager,
-        UserPasswordHasherInterface $passwordHasher
+        UserPasswordHasherInterface $passwordHasher,
+        ApiService $apiService
     ): JsonResponse {
         if ($request->getMethod() === 'OPTIONS') {
             $response = new JsonResponse(null, Response::HTTP_NO_CONTENT);
@@ -33,34 +34,58 @@ class RegistrationController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        // Валидация данных
         $email = $data['email'] ?? null;
         $password = $data['password'] ?? null;
 
-        if (!$email || !$password) {
-            return new JsonResponse(['error' => 'UUID и пароль обязательны'], Response::HTTP_BAD_REQUEST);
-        }
+        $apiService->validateForm($email, $password);
 
-        // Создание нового пользователя
         $user = new User();
-        $user->setUuid(Uuid::v4()->toRfc4122()); // Генерация UUID в контроллере
+        $user->setUuid(Uuid::v4()->toRfc4122());
         $hashedPassword = $passwordHasher->hashPassword($user, $password);
         $user->setPassword($hashedPassword);
         $user->setEmail($email);
         $user->setRoles(['ROLE_USER']);
 
-        // Сохранение в базе данных
         $entityManager->persist($user);
         $entityManager->flush();
 
         $response = new JsonResponse([
-            'message' => 'Пользователь успешно зарегистрирован',
-            'email' => $email,
-            'password' => $password
+            'message' => 'Пользователь успешно зарегистрирован'
         ], Response::HTTP_CREATED);
 
         // Добавление CORS-заголовков
         $response->headers->set('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
         return $response;
+    }
+
+    #[Route('/login', name: 'login', methods: ['POST'])]
+    public function login(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        UserPasswordHasherInterface $passwordHasher,
+        JWTTokenManagerInterface $jwtManager
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        $email = $data['email'] ?? null;
+        $password = $data['password'] ?? null;
+
+        if (!$email || !$password) {
+            return new JsonResponse(['message' => 'Пожалуйста, укажите email и пароль.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+
+        if (!$user) {
+            return new JsonResponse(['message' => 'Неверный email или пароль.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if (!$passwordHasher->isPasswordValid($user, $password)) {
+            return new JsonResponse(['message' => 'Неверный email или пароль.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $token = $jwtManager->create($user);
+
+        return new JsonResponse(['token' => $token], Response::HTTP_OK);
     }
 }
