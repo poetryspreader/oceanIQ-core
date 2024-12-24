@@ -4,64 +4,59 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Ramsey\Uuid\Uuid;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_UUID', fields: ['uuid'])]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(type: "string", length: 36, unique: true)]
+    private string $uuid;
 
-    #[ORM\Column(length: 180)]
-    private ?string $uuid = null;
+    #[ORM\Column(type: "string", unique: true)]
+    private string $email;
 
-    #[ORM\Column]
+    #[ORM\Column(type: "string")]
+    private string $password;
+
+    #[ORM\Column(type: "json")]
     private array $roles = [];
 
-    #[ORM\Column]
-    private ?string $password = null;
+    #[ORM\Column(type: "datetime")]
+    private \DateTimeInterface $createdAt;
 
-    #[ORM\Column]
-    private ?string $email = null;
+    #[ORM\Column(type: "datetime", nullable: true)]
+    private ?\DateTimeInterface $updatedAt;
 
-    public function getId(): ?int
+
+    public function __construct()
     {
-        return $this->id;
+        $this->createdAt = new \DateTimeImmutable();
+        $this->uuid = Uuid::uuid4()->toString();
     }
 
-    public function getUuid(): ?string
+    public function getUuid(): string
     {
         return $this->uuid;
     }
 
-    public function setUuid(string $uuid): static
+    public function setUuid(string $uuid): self
     {
         $this->uuid = $uuid;
 
         return $this;
     }
 
-    public function getUserIdentifier(): string
+    public function getEmail(): ?string
     {
-        return (string) $this->uuid;
+        return $this->email;
     }
 
-    public function getRoles(): array
+    public function setEmail(string $email): self
     {
-        $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
-        $roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): static
-    {
-        $this->roles = $roles;
+        $this->email = $email;
 
         return $this;
     }
@@ -71,26 +66,46 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->password;
     }
 
-    public function setPassword(string $password): static
+    public function setPassword(string $password): self
     {
         $this->password = $password;
 
         return $this;
     }
 
-    public function eraseCredentials(): void
+    public function getRoles(): array
     {
-        // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
+        return $this->roles;
     }
 
-    public function getEmail(): ?string
+    public function setRoles(array $roles): self
     {
-        return $this->email;
+        $this->roles = $roles;
+
+        return $this;
     }
 
-    public function setEmail(?string $email): void
+    public function getCreatedAt(): ?\DateTimeInterface
     {
-        $this->email = $email;
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeInterface $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeInterface
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(?\DateTimeInterface $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
     }
 }

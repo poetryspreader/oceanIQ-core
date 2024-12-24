@@ -1,7 +1,6 @@
 <?php
 namespace App\Controller;
 
-// ...
 use App\Entity\User;
 use App\Service\ApiService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -11,27 +10,19 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Uid\Uuid;
+use Ramsey\Uuid\Uuid;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 class ApiController extends AbstractController
 {
 
-    #[Route('/api/register', name: 'api_register', methods: ['POST', 'OPTIONS'])]
+    #[Route('/register', name: 'register', methods: ['POST', 'OPTIONS'])]
     public function register(
         Request $request,
         EntityManagerInterface $entityManager,
         UserPasswordHasherInterface $passwordHasher,
         ApiService $apiService
     ): JsonResponse {
-        if ($request->getMethod() === 'OPTIONS') {
-            $response = new JsonResponse(null, Response::HTTP_NO_CONTENT);
-            $response->headers->set('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
-            $response->headers->set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
-            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-            return $response;
-        }
-
         $data = json_decode($request->getContent(), true);
 
         $email = $data['email'] ?? null;
@@ -40,8 +31,8 @@ class ApiController extends AbstractController
         $apiService->validateForm($email, $password);
 
         $user = new User();
-        $user->setUuid(Uuid::v4()->toRfc4122());
         $hashedPassword = $passwordHasher->hashPassword($user, $password);
+        $user->setUuid(Uuid::uuid4()->toString());
         $user->setPassword($hashedPassword);
         $user->setEmail($email);
         $user->setRoles(['ROLE_USER']);
@@ -49,13 +40,9 @@ class ApiController extends AbstractController
         $entityManager->persist($user);
         $entityManager->flush();
 
-        $response = new JsonResponse([
+        return new JsonResponse([
             'message' => 'Пользователь успешно зарегистрирован'
         ], Response::HTTP_CREATED);
-
-        // Добавление CORS-заголовков
-        $response->headers->set('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
-        return $response;
     }
 
     #[Route('/login', name: 'login', methods: ['POST'])]
